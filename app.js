@@ -1,7 +1,11 @@
 const express = require("express");
-const { stat, createReadStream } = require("fs");
+const { stat, createReadStream, createWriteStream } = require("fs");
 const path = require("path");
 const http = require("http");
+const ffmpegClient = require("fluent-ffmpeg");
+const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
+ffmpegClient.setFfmpegPath(ffmpegPath);
+
 const Server = require("socket.io").Server;
 
 const audioFiles = [
@@ -84,6 +88,33 @@ io.on("connection", (socket) => {
     const nextAudio = audioFiles[currentFileIndex];
     console.log(nextAudio);
     socket.emit("playNext", nextAudio);
+  });
+
+  socket.on("audio", (audioBlob) => {
+    // Save the audio file on the server
+    const fileName = "newRecord.mp3"; // You may change the file name and extension
+    const filePath = __dirname + "/audio/" + fileName;
+
+    const tempFilePath = "temp_audio.webm";
+    const writeStream = createWriteStream(tempFilePath);
+    writeStream.write(audioBlob);
+    writeStream.end(() => {
+      // Convert to MP3 using ffmpeg
+      ffmpegClient(tempFilePath)
+        .toFormat("mp3")
+        .save(filePath)
+        .on("end", () => {
+          // Handle successful conversion
+          currentFileIndex = 0;
+          audioFiles.unshift(fileName);
+          const nextAudio = audioFiles[0];
+          io.emit("playNext", nextAudio);
+        })
+        .on("error", (err) => {
+          // Handle errors
+          console.log(err);
+        });
+    });
   });
 });
 

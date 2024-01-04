@@ -24,3 +24,50 @@ playBtn.addEventListener("click", () => {
     audio.pause();
   }
 });
+
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+
+let audioChunks = [];
+let mediaRecorder;
+
+startBtn.addEventListener("click", () => {
+  navigator.mediaDevices
+    .getUserMedia({ audio: true })
+    .then((stream) => {
+      mediaRecorder = new MediaRecorder(stream);
+
+      mediaRecorder.start();
+      console.log("Recording started");
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunks.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: "audio/mp3" });
+
+        const reader = new FileReader();
+        reader.readAsArrayBuffer(audioBlob);
+        reader.onload = () => {
+          const buffer = reader.result;
+          socket.emit("audio", buffer);
+          console.log(buffer); // Sending audio data to the server
+        };
+
+        audioChunks = [];
+      };
+    })
+    .catch((err) => {
+      console.error("Error accessing microphone:", err);
+    });
+});
+
+stopBtn.addEventListener("click", () => {
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    mediaRecorder.stop();
+    console.log("Recording stopped");
+  }
+});
