@@ -37,6 +37,7 @@ startBtn.addEventListener("click", () => {
     .then((stream) => {
       mediaRecorder = new MediaRecorder(stream);
 
+      audio.pause();
       mediaRecorder.start();
       console.log("Recording started");
 
@@ -54,7 +55,7 @@ startBtn.addEventListener("click", () => {
         reader.onload = () => {
           const buffer = reader.result;
           socket.emit("audio", buffer);
-          console.log(buffer); // Sending audio data to the server
+          // Sending audio data to the server
         };
 
         audioChunks = [];
